@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Task Management</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<h1>Task Management</h1>
+
+<!-- Task creation/update form -->
+<form id="taskForm" onsubmit="saveTask(event)">
+    <input type="hidden" id="taskId">
+
+    <label for="title">Title:</label>
+    <input type="text" id="title" name="title" required>
+
+    <label for="description">Description:</label>
+    <input type="text" id="description" name="description" required>
+
+    <label for="status">Status:</label>
+    <select id="status" name="status" required>
+        <option value="Pending">Pending</option>
+        <option value="In Progress">In Progress</option>
+        <option value="Completed">Completed</option>
+    </select>
+
+    <label for="dueDate">Due Date:</label>
+    <input type="date" id="dueDate" name="dueDate" required>
+
+    <button type="submit" id="saveButton">Add Task</button>
+</form>
+
+<!-- Display tasks -->
+<div id="tasks"></div>
+
+<script>
+    // Function to load tasks
+    async function loadTasks() {
+        const response = await fetch('/api/tasks');
+        const tasks = await response.json();
+        document.getElementById('tasks').innerHTML = tasks.map(task => `
+            <div class="task" id="task-${task.id}">
+                <h2>${task.title}</h2>
+                <p>Description: ${task.description}</p>
+                <p>Status: ${task.status}</p>
+                <p>Due Date: ${task.dueDate}</p>
+                <button onclick="editTask(${task.id})">Update</button>
+                <button onclick="deleteTask(${task.id})">Delete</button>
+            </div>
+        `).join('');
+    }
+
+    // Function to save a task (create or update based on taskId)
+    async function saveTask(event) {
+        event.preventDefault();
+
+        const taskId = document.getElementById('taskId').value;
+        const title = document.getElementById('title').value;
+        const description = document.getElementById('description').value;
+        const status = document.getElementById('status').value;
+        const dueDate = document.getElementById('dueDate').value;
+
+        const method = taskId ? 'PUT' : 'POST';
+        const url = taskId ? `/api/tasks/${taskId}` : '/api/tasks';
+
+        const response = await fetch(url, {
+            method,
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ title, description, status, dueDate }),
+        });
+
+        if (response.ok) {
+            loadTasks(); // Reload tasks to reflect the updated task
+            resetForm(); // Clear form after saving
+        } else {
+            alert("Failed to save task.");
+        }
+    }
+
+    // Function to populate form with task details for updating
+    async function editTask(id) {
+        const response = await fetch(`/api/tasks/${id}`);
+        if (response.ok) {
+            const task = await response.json();
+            document.getElementById('taskId').value = task.id;
+            document.getElementById('title').value = task.title;
+            document.getElementById('description').value = task.description;
+            document.getElementById('status').value = task.status;
+            document.getElementById('dueDate').value = task.dueDate;
+            document.getElementById('saveButton').innerText = 'Update Task';
+        } else {
+            alert("Failed to load task for editing.");
+        }
+    }
+
+    // Function to delete a task
+    async function deleteTask(id) {
+        const response = await fetch(`/api/tasks/${id}`, { method: 'DELETE' });
+        if (response.ok) {
+            loadTasks();
+        } else {
+            alert("Failed to delete task.");
+        }
+    }
+
+    // Function to reset form
+    function resetForm() {
+        document.getElementById('taskId').value = '';
+        document.getElementById('title').value = '';
+        document.getElementById('description').value = '';
+        document.getElementById('status').value = 'Pending';
+        document.getElementById('dueDate').value = '';
+        document.getElementById('saveButton').innerText = 'Add Task';
+    }
+
+    // Load tasks on page load
+    loadTasks();
+</script>
+</body>
+</html>
